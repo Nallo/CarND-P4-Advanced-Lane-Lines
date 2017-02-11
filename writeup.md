@@ -49,9 +49,9 @@ The picture below provide a visual example of how the undistortion procedure wil
 To correctly detect the lane lines I am going to leverage the following Computer Vision techniques to create a binary image:
 
   * Color space mapping - RGB to HLS.
-  * Color thresholding.
-  * Sobel gradients.
-  * Gradients thresholding.
+  * Color thresholding - (170, 255).
+  * Sobel gradients - (kernel size: 9).
+  * Gradients thresholding - (20, 100).
 
 The *Create a Binary Image* cell in the `pipeline.ipynb` notebook implements the code to generate a binary image.
 
@@ -158,7 +158,7 @@ The result of the pipeline on a single image is depicted below.
 
 ***Provide a link to your final video output. Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!)***
 
-
+A demonstration of the pipeline can be found on the `output_video` directory.
 
 ## Discussion
 
