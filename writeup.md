@@ -21,7 +21,7 @@ The figure below depicts the calibration images annotated with the chessboard co
 
 ![](output_images/chessboard_corners.jpg)
 
-Once the chessboard corners are identified, we can **calibrate** our camera by using the `cv2.calibrateCamera()` function which takes as input two sets of points: the former contains 3d points in real world space whereas, the latter contains 2d points in the image plane.
+Once the chessboard corners are identified, we can **calibrate** our camera by using the `cv2.calibrateCamera()` function which takes as input two sets of points: the former set contains 3d points in real world space whereas, the latter set contains 2d points in the image plane.
 
 The `cv2.calibrateCamera()` function returns two interesting pieces of information:
 
@@ -53,11 +53,12 @@ To correctly detect the lane lines I am going to leverage the following Computer
   * Sobel gradients - (kernel size: 9).
   * Gradients thresholding - (20, 100).
 
-The *Create a Binary Image* cell in the `pipeline.ipynb` notebook implements the code to generate a binary image.
+The **Create a Binary Image** cell in the `pipeline.ipynb` notebook implements the code to generate a binary image.
 
-The snipped below reports the key points of the procedure.
+The snippet below reports the key points of the procedure.
 
 ```python
+def create_binary(img):
 	# Convert to HSV color space and separate the S channel
     hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HLS).astype(np.float)
     h_channel = hsv[:,:,0]
@@ -97,7 +98,7 @@ The result of the procedure is depicted below.
 
 ![](output_images/binary_transform.jpg)
 
-As can we see from the snippet, firstly, the image color space was mapped from RGB to HLS and the S channel was chosen for the purpose of this project. This specific channel is independent from the lane lines color and allow us to correctly indentify either yellow and white lines.
+As we can see from the snippet, firstly, the image color space was mapped from RGB to HLS and the S channel was chosen for the purpose of this project. This specific channel is independent from the lane lines color and allow us to correctly indentify either yellow and white lines.
 
 ***Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.***
 
@@ -105,20 +106,30 @@ The next step of the pipeline consists in performing a perspective transformatio
 
 Therefore, I have first choosen 4 points in the original image (two points at the bottom of the image lane lines, two at the top of the lane lines) and map them to a square in the bird's eye space. Secondly, I leveraged on the `cv2.warpPerspective()` function to transform the original image and generate the bird's eye perspective.
 
-The cell **Apply Perspective Transformation (Bird's eye)** in the `pipeline.ipynb` notebook implements the bird's eye transformation. 
+The cell **Apply Perspective Transformation (Bird's eye)** in the `pipeline.ipynb` notebook implements the bird's eye transformation.
 The figure below depicts the output of the bird's eye transformation.
 
 ![](output_images/warped.jpg)
 
 ***Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?***
 
-Starting from the warped image, we can consider the image pixels as they are the result of a scatter plot. By leveraging this fact, we can slice the image in a set of windows (typical 9 or 10) that reduce the noise of the image pixels.
+Starting from the warped image, we can consider the image pixels as the result of a scatter plot. By leveraging this fact, we can slice the image in a set of windows (typical 9 or 10) and search for the lines only in these windows.
 
 However, before moving any further we need to find the starting point of the lane lines (at the bottom of the image). In this particular scenario we can compute a particular histogram of the image. This histogram will sum up the pixel values in the image and will help us in identify the starting point of the lines.
 
 The figure below depicts the histogram computed on the lower half of the warped image depicted above.
 
 ![](output_images/histogram.jpg)
+
+Moreover, it is hereby reported the snippet that computes the image histogram.
+
+```python
+def display_histogram(img):
+    histogram = np.sum(img[int(img.shape[0]/2):,:], axis=0)
+    plt.title('Lines histogram')
+    plt.plot(histogram)
+    return
+```
 
 As can we see, the histogram identified a line starting at pixels range (200, 300) and one at pixels range (1000, 1100).
 
@@ -130,9 +141,12 @@ The figure below depicts the sliding windows technique.
 
 Once the lane lines are identified with two sets of (x,y) pairs, we can fit them using a 2nd order polynomial in the form `f(y) = A*y^2 + B*y + C`. This mathematical form will allow us to better identify the curve radius.
 
+The cell **Find Lines and Compute Curve Radius** in the `pipeline.ipynb` notebook implements the lines position detection.
+
+
 ***Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.***
 
-In order to calculate the radius of the curve we use a simple but powerful technique that computes analitically the radius of a circle that is tangent to a function in a given point.
+In order to calculate the radius of the curve we use a simple but powerful technique that computes analitically the radius of a circle that is tangent to a function in a given point ([further reading](http://www.intmath.com/applications-differentiation/8-radius-curvature.php)).
 The method relies on the first and second order derivative of the function and defines the curve radius as follows:
 
 `R = (1/|2A|) * (1 + (2Ay + B)^2)^3/2`
@@ -146,6 +160,8 @@ Finally, it is worth noting that, all these calculations are made in a *pixel sp
 
 which maps the number of meters per pixel in the x and y dimensions.
 
+The cell **Find Lines and Compute Curve Radius** in the `pipeline.ipynb` notebook implements the calculation ofthe curve radius.
+
 ***Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.***
 
 The last step consists in plotting back to the original image space the lane identified in the bird's eye space. In this phase we can rely on the `cv2.warpPerspective()` function which takes as input the image to transform and the **inverse** of the transformation matrix computed in the camela calibration process.
@@ -153,6 +169,29 @@ The last step consists in plotting back to the original image space the lane ide
 The result of the pipeline on a single image is depicted below.
 
 ![](output_images/final_result.jpg)
+
+The code from mapping the warped image to the original image is reported below.
+
+```python
+def to_real_world_space(image, warped, Minv, left_fitx, right_fitx, ploty):
+    # Create an image to draw the lines on
+    color_warp = np.zeros_like(warped).astype(np.uint8)
+    
+    # Recast the x and y points into usable format for cv2.fillPoly()
+    pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    pts = np.hstack((pts_left, pts_right))
+
+    # Draw the lane onto the warped blank image
+    cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+
+    # Warp the blank back to original image space using inverse perspective matrix (Minv)
+    newwarp = cv2.warpPerspective(color_warp, Minv, (image.shape[1], image.shape[0]))
+
+    # Combine the result with the original image
+    result = cv2.addWeighted(image, 1, newwarp, 0.3, 0)
+    return result
+```
 
 ## Pipeline (video)
 
