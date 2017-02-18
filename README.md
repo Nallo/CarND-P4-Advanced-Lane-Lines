@@ -1,5 +1,7 @@
 # Advanced Lane Finding Project - Writeup
 
+[Live Demo on YouTube](https://youtu.be/jE8JhppBCdQ)
+
 The goals / steps of this project are the following:
 
 * Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
@@ -67,7 +69,7 @@ def create_binary(img):
 
     # Use the s_channel
     channel = s_channel
-    
+
     # Sobel x and y
     sobel_x = cv2.Sobel(channel, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
     sobel_y = cv2.Sobel(channel, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
@@ -82,7 +84,7 @@ def create_binary(img):
     # Threshold x gradient
     sx_binary = np.zeros_like(scaled_sobel_x)
     sx_binary[(scaled_sobel_x >= sx_thresh[0]) & (scaled_sobel_x <= sx_thresh[1])] = 1
-    
+
     # Threshold color channel
     s_binary = np.zeros_like(s_channel)
     s_binary[(channel >= sc_thresh[0]) & (channel <= sc_thresh[1])] = 1
@@ -176,7 +178,7 @@ The code from mapping the warped image to the original image is reported below.
 def to_real_world_space(image, warped, Minv, left_fitx, right_fitx, ploty):
     # Create an image to draw the lines on
     color_warp = np.zeros_like(warped).astype(np.uint8)
-    
+
     # Recast the x and y points into usable format for cv2.fillPoly()
     pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
     pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
@@ -205,8 +207,6 @@ A demonstration of the pipeline can be found on the `output_video` directory.
 
 The pipeline I wrote is working pretty well in the first video. However, it may fail to detect lane lines in case the camera images are too bright. A reasonable solution would be to apply the image **histogram normalization**. This technique will enhance the image contrast and, as a consequence, the S channel of the HLS transformation would better detect the lines.
 
-A second enhancement on the project would be to implement a 5th order filter on the lane lines (i.e. keeping track of the last 5 lines found and average the new lines on the 5 already discovered).
-
-The most triky part of the entire project, however, I think is implementing the logic to detect the lines using the sliding windows techniques.
+The most tricky part of the entire project, however, I think is implementing the logic to detect the lines using the sliding windows techniques.
 
 *Stefano*
